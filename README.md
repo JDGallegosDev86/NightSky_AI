@@ -28,9 +28,12 @@ Python/FastAPI = backend API + AI processing
 PostgreSQL/PostGIS = database + location data
 PyTorch/OpenCV = image classification model
 
-[[[NightSky_AI/ /n
+## 📁 Project Structure
+
+```text
+NightSky_AI/
 │
-├── #mobile-app/          # React Native app for iOS + Android
+├── mobile-app/          # React Native app for iOS + Android
 │   ├── src/
 │   ├── assets/
 │   ├── screens/
@@ -49,8 +52,9 @@ PyTorch/OpenCV = image classification model
 │   ├── inference/
 │   └── datasets/
 │
-├── #docs/                # Jira screenshots, wireframes, style tile, pitch deck
+├── docs/                # Jira screenshots, wireframes, style tile, pitch deck
 │
-├── #README.md
-├── #.gitignore
-└── #.env.example]]]
+├── README.md
+├── .gitignore
+└── .env.example
+```
