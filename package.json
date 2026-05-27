@@ -4,7 +4,7 @@
     "@react-navigation/native": "^7.2.4",
     "@react-navigation/native-stack": "^7.15.1",
     "@react-navigation/stack": "^7.9.2",
-    "expo": "^55.0.24",
+    "expo": "^55.0.26",
     "react-dom": "^19.2.6",
     "react-native-safe-area-context": "~5.6.2",
     "react-native-screens": "~4.23.0",
