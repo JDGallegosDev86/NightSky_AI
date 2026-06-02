@@ -4,28 +4,60 @@ import {
   StyleSheet, ScrollView, KeyboardAvoidingView, Platform,
 } from 'react-native'
 import { useNavigation } from '@react-navigation/native'
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import NightSkyLogo from '../components/NightSkyLogo'
 import { colors, radius } from '../theme'
 
 export default function LoginScreen() {
   const navigation = useNavigation()
 
-  // Track what the user types into each field
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
+
+  // ── Check if onboarding should be shown ─────────────────
+  // Clears the saved date temporarily so we can test onboarding.
+  // Remove the removeItem line once onboarding is confirmed working.
+  const handleContinue = async () => {
+    try {
+      // TEMPORARY: forces onboarding to show every time for testing
+      // Remove this line when done testing
+      await AsyncStorage.removeItem('lastOnboardingDate')
+
+      const lastDate = await AsyncStorage.getItem('lastOnboardingDate')
+
+      if (!lastDate) {
+        // No date found — show onboarding
+        navigation.navigate('Onboarding')
+        return
+      }
+
+      // Check how many days since last onboarding
+      const daysSince = (new Date() - new Date(lastDate)) / (1000 * 60 * 60 * 24)
+
+      if (daysSince >= 60) {
+        navigation.navigate('Onboarding')
+      } else {
+        navigation.navigate('MapHome')
+      }
+    } catch (error) {
+      // Something went wrong — go straight to map
+      navigation.navigate('MapHome')
+    }
+  }
 
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'} // Handles keyboard differently on iOS vs Android
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView
         contentContainerStyle={styles.scroll}
-        keyboardShouldPersistTaps="handled" // Lets users tap buttons without dismissing keyboard first
+        keyboardShouldPersistTaps="handled"
       >
 
-        {/* ── Logo placeholder — replace with <NightSkyLogo /> when ready ── */}
-        <View style={styles.logoPlaceholder}>
-          <Text style={styles.logoPlaceholderText}>NightSky AI</Text>
+        {/* ── Logo ── */}
+        <View style={styles.logoWrap}>
+          <NightSkyLogo size={120} />
         </View>
 
         {/* ── Section label ── */}
@@ -38,9 +70,9 @@ export default function LoginScreen() {
             placeholder="email@domain.com"
             placeholderTextColor={colors.textMuted}
             value={email}
-            onChangeText={setEmail}         // Updates email state as user types
+            onChangeText={setEmail}
             keyboardType="email-address"
-            autoCapitalize="none"           // Don't auto-capitalize emails
+            autoCapitalize="none"
           />
           <TextInput
             style={styles.input}
@@ -48,30 +80,30 @@ export default function LoginScreen() {
             placeholderTextColor={colors.textMuted}
             value={password}
             onChangeText={setPassword}
-            secureTextEntry                 // Hides password characters
+            secureTextEntry
           />
         </View>
 
         {/* ── Action buttons ── */}
         <View style={styles.actions}>
 
-          {/* Main continue button — navigates to the map */}
+          {/* Continue — runs the onboarding check */}
           <TouchableOpacity
             style={styles.btnPrimary}
-            onPress={() => navigation.navigate('MapHome')}
+            onPress={handleContinue}
             activeOpacity={0.85}
           >
             <Text style={styles.btnPrimaryText}>Continue</Text>
           </TouchableOpacity>
 
-          {/* Divider line with 'or' text */}
+          {/* Divider */}
           <View style={styles.dividerRow}>
             <View style={styles.dividerLine} />
             <Text style={styles.dividerText}>or</Text>
             <View style={styles.dividerLine} />
           </View>
 
-          {/* Register button — navigates to the Register screen */}
+          {/* Register */}
           <TouchableOpacity
             style={styles.btnOutline}
             onPress={() => navigation.navigate('Register')}
@@ -80,12 +112,12 @@ export default function LoginScreen() {
             <Text style={styles.btnOutlineText}>Register now</Text>
           </TouchableOpacity>
 
-          {/* Google sign in — TODO: hook up real Google auth */}
+          {/* Google — TODO: hook up real Google auth */}
           <TouchableOpacity style={styles.btnOutline} activeOpacity={0.8}>
             <Text style={styles.btnOutlineText}>🇬 Continue with Google</Text>
           </TouchableOpacity>
 
-          {/* Apple sign in — TODO: hook up real Apple auth */}
+          {/* Apple — TODO: hook up real Apple auth */}
           <TouchableOpacity style={styles.btnOutline} activeOpacity={0.8}>
             <Text style={styles.btnOutlineText}> Continue with Apple</Text>
           </TouchableOpacity>
@@ -104,27 +136,13 @@ const styles = StyleSheet.create({
   },
   scroll: {
     flexGrow: 1,
-    justifyContent: 'flex-end', // Push content toward the bottom like the wireframe
+    justifyContent: 'flex-end',
     padding: 24,
     paddingBottom: 40,
   },
-  // Placeholder box where the logo will go
-  logoPlaceholder: {
+  logoWrap: {
     alignItems: 'center',
-    justifyContent: 'center',
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: colors.spaceCard,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignSelf: 'center',
     marginBottom: 44,
-  },
-  logoPlaceholderText: {
-    color: colors.textMuted,
-    fontSize: 12,
-    fontWeight: '600',
   },
   sectionLabel: {
     fontSize: 12,
@@ -147,7 +165,9 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.textBright,
   },
-  actions: { gap: 10 },
+  actions: {
+    gap: 10,
+  },
   btnPrimary: {
     backgroundColor: colors.accentViolet,
     borderRadius: radius.md,

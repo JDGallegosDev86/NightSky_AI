@@ -4,6 +4,7 @@ import { useNavigation } from '@react-navigation/native'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 import { colors, radius } from '../theme'
+import NightSkyLogo from '../components/NightSkyLogo'
 
 // ── Menu items list ──────────────────────────────────────
 // Each item has a label, an icon emoji, and a screen name
@@ -11,9 +12,9 @@ import { colors, radius } from '../theme'
 // isn't built yet and will show a "coming soon" alert.
 const MENU_ITEMS = [
   { label: 'Settings',                  icon: '⚙️',  screen: 'Settings' },
-  { label: 'Profile',                   icon: '👤',  screen: null },
-  { label: 'Uploaded Images',           icon: '🖼️',  screen: null },
-  { label: 'Saved Locations',           icon: '📍',  screen: null },
+  { label: 'Profile',                   icon: '👤', screen: 'Profile' },
+  { label: 'Uploaded Images',           icon: '🖼️', screen: 'UploadedImages' },
+  { label: 'Saved Locations',           icon: '📍',  screen: 'SavedLocations' },
   { label: 'History',                   icon: '🕑',  screen: null },
   { label: 'View Map',                  icon: '🗺️',  screen: 'MapHome' },
   { label: 'Plan Your Next Stargaze',   icon: '🔭',  screen: null },
@@ -60,9 +61,8 @@ export default function MenuScreen() {
         ))}
 
         {/* ── Logo placeholder at the bottom of the list ── */}
-        {/* Replace with <NightSkyLogo size={96} /> when ready */}
-        <View style={styles.logoPlaceholder}>
-          <Text style={styles.logoPlaceholderText}>NightSky AI</Text>
+        <View style={styles.logoWrap}>
+        <NightSkyLogo size={120} />
         </View>
 
       </ScrollView>
@@ -124,24 +124,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: colors.textMuted,
   },
-  // Logo placeholder sits at the bottom of the scroll list
-  logoPlaceholder: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: colors.spaceCard,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignSelf: 'center',
-    marginVertical: 20,
-  },
-  logoPlaceholderText: {
-    color: colors.textMuted,
-    fontSize: 11,
-    fontWeight: '600',
-  },
   // Red logout button fixed at the bottom above the nav bar
   logoutBtn: {
     padding: 18,
@@ -156,4 +138,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.4,
   },
+  logoWrap: {
+  alignItems: 'center',
+  marginBottom: 44,
+},
 })

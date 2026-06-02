@@ -3,22 +3,24 @@ import {
   View, Text, TouchableOpacity, ScrollView,
   Switch, StyleSheet, Alert,
 } from 'react-native'
+import { useNavigation } from '@react-navigation/native'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 import { colors, radius } from '../theme'
 
 // ── Section buttons ──────────────────────────────────────
-// These are the main category buttons at the top of settings.
-// Each one will eventually navigate to its own sub-screen.
+// Each button navigates to its own sub-settings screen.
+// The screen property tells us where to navigate.
+// null means that screen is not built yet.
 const SECTION_BTNS = [
-  'Account',
-  'Notifications',
-  'Privacy (GPS)',
-  'Display Options',
+  { label: 'Account',          screen: 'Profile' },
+  { label: 'Notifications',    screen: 'Notifications' },
+  { label: 'Privacy',    screen: 'Privacy' },
+  { label: 'Display Options',  screen: null },
 ]
 
 // ── Toggle settings ──────────────────────────────────────
-// These are the on/off switches below the section buttons.
+// Quick on/off switches for common app preferences.
 // Each has a unique id used to track its on/off state.
 const TOGGLES = [
   { id: 'nasa', label: 'Show NASA Satellite Layer' },
@@ -27,22 +29,28 @@ const TOGGLES = [
 ]
 
 export default function SettingsScreen() {
-  // Tracks the current on/off state of each toggle
-  const [toggles, setToggles] = useState({ nasa: true, gps: false, auto: false })
+  const navigation = useNavigation()
 
-  // Keeps a copy of the last saved state so Cancel can revert changes
+  // Tracks the current on/off state of each toggle
+  const [toggles, setToggles] = useState({
+    nasa: true,
+    gps:  false,
+    auto: false,
+  })
+
+  // Keeps a copy of the last saved state so Cancel can revert
   const [saved, setSaved] = useState({ ...toggles })
 
-  // Flips a single toggle between true and false
+  // ── Flip a single toggle ─────────────────────────────
   const flip = (id) => setToggles((prev) => ({ ...prev, [id]: !prev[id] }))
 
-  // Saves the current toggle states and shows a confirmation
+  // ── Apply — saves current toggle states ─────────────
   const apply = () => {
     setSaved({ ...toggles })
     Alert.alert('Saved', 'Your settings have been applied.')
   }
 
-  // Reverts all toggles back to the last saved state
+  // ── Cancel — reverts to last saved state ─────────────
   const cancel = () => setToggles({ ...saved })
 
   return (
@@ -61,13 +69,21 @@ export default function SettingsScreen() {
         </View>
 
         {/* ── Section buttons ── */}
-        {/* Each button will eventually open a sub-settings screen */}
-        {SECTION_BTNS.map((label) => (
+        {/* Each button navigates to its own sub-screen */}
+        {SECTION_BTNS.map(({ label, screen }) => (
           <TouchableOpacity
             key={label}
             style={styles.sectionBtn}
             activeOpacity={0.75}
-            onPress={() => alert(label + ' — coming soon!')}
+            onPress={() => {
+              if (screen) {
+                // Navigate to the screen if it exists
+                navigation.navigate(screen)
+              } else {
+                // Show coming soon if screen not built yet
+                alert(label + ' — coming soon!')
+              }
+            }}
           >
             <Text style={styles.sectionBtnText}>{label}</Text>
             <Text style={styles.chevron}>›</Text>
@@ -75,6 +91,7 @@ export default function SettingsScreen() {
         ))}
 
         {/* ── Toggle switches group ── */}
+        {/* Quick access toggles for common preferences */}
         <View style={styles.toggleGroup}>
           {TOGGLES.map(({ id, label }, i) => (
             <View
@@ -150,6 +167,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   gearIcon: { fontSize: 28 },
+  // Section buttons navigate to sub-screens
   sectionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -194,7 +212,7 @@ const styles = StyleSheet.create({
   toggleLabel: {
     fontSize: 14,
     color: colors.textPrimary,
-    flex: 1,                    // Takes up space to the left of the switch
+    flex: 1,
     marginRight: 12,
   },
   actions: {
