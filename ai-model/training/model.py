@@ -51,4 +51,4 @@ class BortleNet (nn.Module):
         x = self.dropout(x) # Apply dropout before the final decision
         x = self.fc2(x)
         
-        return x
+        return x 
