@@ -40,6 +40,7 @@ Authentication: JWT (python-jose), Passlib BCrypt
 ## Project Structure
 
 ```text
+```text
 NightSky_AI/
 │
 ├── mobile-app/          # React Native app for iOS + Android

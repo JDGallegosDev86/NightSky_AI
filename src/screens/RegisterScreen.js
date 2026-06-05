@@ -5,6 +5,8 @@ import {
 } from 'react-native'
 import { useNavigation } from '@react-navigation/native'
 import { colors, radius } from '../theme'
+import NightSkyLogo from '../components/NightSkyLogo'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
 export default function RegisterScreen() {
   const navigation = useNavigation()
@@ -17,6 +19,35 @@ export default function RegisterScreen() {
   // Tracks whether the user agreed to share their GPS location
   const [gpsConsent, setGpsConsent]   = useState(false)
 
+  // ── Check if onboarding should be shown ─────────────────
+// Same logic as LoginScreen — new users should always
+// see onboarding after registering for the first time.
+const handleContinue = async () => {
+  try {
+    // TEMPORARY: Clear onboarding date so we can test it
+    // Remove this line once onboarding is confirmed working
+    await AsyncStorage.removeItem('lastOnboardingDate')
+
+    const lastDate = await AsyncStorage.getItem('lastOnboardingDate')
+
+    if (!lastDate) {
+      // First time user — always show onboarding after registering
+      navigation.navigate('Onboarding')
+      return
+    }
+
+    const daysSince = (new Date() - new Date(lastDate)) / (1000 * 60 * 60 * 24)
+
+    if (daysSince >= 60) {
+      navigation.navigate('Onboarding')
+    } else {
+      navigation.navigate('MapHome')
+    }
+  } catch (error) {
+    navigation.navigate('MapHome')
+  }
+}
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -27,9 +58,8 @@ export default function RegisterScreen() {
         keyboardShouldPersistTaps="handled" // Lets users tap buttons without dismissing keyboard first
       >
 
-        {/* ── Logo placeholder — replace with <NightSkyLogo /> when ready ── */}
-        <View style={styles.logoPlaceholder}>
-          <Text style={styles.logoPlaceholderText}>NightSky AI</Text>
+        <View style={styles.logoWrap}>
+        <NightSkyLogo size={120} />
         </View>
 
         {/* ── Section label ── */}
@@ -84,7 +114,7 @@ export default function RegisterScreen() {
           {/* Main continue button — TODO: hook up real registration API */}
           <TouchableOpacity
             style={styles.btnPrimary}
-            onPress={() => navigation.navigate('MapHome')}
+            onPress={handleContinue}
             activeOpacity={0.85}
           >
             <Text style={styles.btnPrimaryText}>Continue</Text>
@@ -125,24 +155,6 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingBottom: 40,
   },
-  // Placeholder box where the logo will go
-  logoPlaceholder: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: colors.spaceCard,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignSelf: 'center',
-    marginBottom: 44,
-  },
-  logoPlaceholderText: {
-    color: colors.textMuted,
-    fontSize: 12,
-    fontWeight: '600',
-  },
   sectionLabel: {
     fontSize: 12,
     fontWeight: '700',
@@ -164,6 +176,10 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.textBright,
   },
+  logoWrap: {
+  alignItems: 'center',
+  marginBottom: 44,
+},
   // GPS consent row — toggle sits on the right, text on the left
   gpsRow: {
     flexDirection: 'row',
