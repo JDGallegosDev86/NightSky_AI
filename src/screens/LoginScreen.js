@@ -1,3 +1,4 @@
+import { loginUser } from '../services/authServices'
 import React, { useState } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity,
@@ -18,20 +19,19 @@ export default function LoginScreen() {
   // Clears the saved date temporarily so we can test onboarding.
   // Remove the removeItem line once onboarding is confirmed working.
   const handleContinue = async () => {
-    try {
-      // TEMPORARY: forces onboarding to show every time for testing
-      // Remove this line when done testing
-      await AsyncStorage.removeItem('lastOnboardingDate')
+  try {
+    const result = await loginUser(email, password)
+
+    if (result.access_token) {
+      await AsyncStorage.setItem('jwtToken', result.access_token)
 
       const lastDate = await AsyncStorage.getItem('lastOnboardingDate')
 
       if (!lastDate) {
-        // No date found — show onboarding
         navigation.navigate('Onboarding')
         return
       }
 
-      // Check how many days since last onboarding
       const daysSince = (new Date() - new Date(lastDate)) / (1000 * 60 * 60 * 24)
 
       if (daysSince >= 60) {
@@ -39,11 +39,14 @@ export default function LoginScreen() {
       } else {
         navigation.navigate('MapHome')
       }
-    } catch (error) {
-      // Something went wrong — go straight to map
-      navigation.navigate('MapHome')
+    } else {
+      alert(result.detail || 'Login failed')
     }
+  } catch (error) {
+    console.log(error)
+    alert('Could not connect to backend')
   }
+}
 
   return (
     <KeyboardAvoidingView

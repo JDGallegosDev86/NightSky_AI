@@ -1,3 +1,4 @@
+import { registerUser } from '../services/authServices'
 import React, { useState } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity,
@@ -23,28 +24,28 @@ export default function RegisterScreen() {
 // Same logic as LoginScreen — new users should always
 // see onboarding after registering for the first time.
 const handleContinue = async () => {
+  if (!email || !password || !confirmPass) {
+    alert('Please fill in all fields')
+    return
+  }
+
+  if (password !== confirmPass) {
+    alert('Passwords do not match')
+    return
+  }
+
   try {
-    // TEMPORARY: Clear onboarding date so we can test it
-    // Remove this line once onboarding is confirmed working
-    await AsyncStorage.removeItem('lastOnboardingDate')
+    const result = await registerUser(email, password)
 
-    const lastDate = await AsyncStorage.getItem('lastOnboardingDate')
-
-    if (!lastDate) {
-      // First time user — always show onboarding after registering
-      navigation.navigate('Onboarding')
-      return
-    }
-
-    const daysSince = (new Date() - new Date(lastDate)) / (1000 * 60 * 60 * 24)
-
-    if (daysSince >= 60) {
-      navigation.navigate('Onboarding')
+    if (result.message) {
+      alert('Registration successful')
+      navigation.navigate('Login')
     } else {
-      navigation.navigate('MapHome')
+      alert(result.detail || 'Registration failed')
     }
   } catch (error) {
-    navigation.navigate('MapHome')
+    console.log(error)
+    alert('Could not connect to backend')
   }
 }
 
