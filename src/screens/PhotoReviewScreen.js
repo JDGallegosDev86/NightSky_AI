@@ -1,43 +1,107 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   View, Text, Image, TouchableOpacity,
-  StyleSheet, ScrollView, Alert, ActivityIndicator,
+  StyleSheet, ScrollView, Alert, ActivityIndicator, Switch,
 } from 'react-native'
 import { useNavigation, useRoute } from '@react-navigation/native'
+import * as Location from 'expo-location'
 import TopBar from '../components/TopBar'
 import { colors, radius } from '../theme'
 
 export default function PhotoReviewScreen() {
   const navigation = useNavigation()
-  const route = useRoute()
+  const route      = useRoute()
 
   // ── Route params ─────────────────────────────────────
-  // These are passed in when navigating to this screen.
-  // photoUri   — the local file path of the captured photo
-  // latitude   — GPS latitude where the photo was taken
-  // longitude  — GPS longitude where the photo was taken
-  // timestamp  — when the photo was taken
+  // photoUri and timestamp passed in from camera feature
   const {
-    photoUri   = null,
-    latitude   = null,
-    longitude  = null,
-    timestamp  = new Date().toISOString(),
+    photoUri  = null,
+    timestamp = new Date().toISOString(),
   } = route.params || {}
 
-  // Tracks whether the upload is in progress
+  // ── GPS state ────────────────────────────────────────
+  // Stores the real GPS coordinates fetched from the device
+  const [latitude, setLatitude]   = useState(null)
+  const [longitude, setLongitude] = useState(null)
+
+  // Tracks whether we are currently fetching GPS coordinates
+  const [fetchingGps, setFetchingGps] = useState(true)
+
+  // Tracks GPS permission status
+  const [gpsPermission, setGpsPermission] = useState(null)
+
+  // ── Public sharing toggle ────────────────────────────
+  // Controls whether the GPS location is shared publicly
+  // with other users on the heat map
+  const [sharePublicly, setSharePublicly] = useState(true)
+
+  // ── Upload state ─────────────────────────────────────
   const [uploading, setUploading] = useState(false)
 
-  // ── Format coordinates for display ──────────────────
-  // Converts decimal coordinates to a readable format
-  // e.g. 40.7128 → "40.7128° N"
-  const formatCoord = (value, posLabel, negLabel) => {
-    if (value === null) return 'Unavailable'
-    const direction = value >= 0 ? posLabel : negLabel
-    return `${Math.abs(value).toFixed(6)}° ${direction}`
+  // ── Fetch GPS coordinates on screen load ─────────────
+  // Automatically gets the device's current location
+  // when the screen first appears.
+  useEffect(() => {
+    fetchLocation()
+  }, [])
+
+  const fetchLocation = async () => {
+    setFetchingGps(true)
+    try {
+      // Check if we already have permission
+      const { status: existingStatus } = await Location.getForegroundPermissionsAsync()
+
+      let finalStatus = existingStatus
+
+      // If not granted yet, request it now
+      if (existingStatus !== 'granted') {
+        const { status } = await Location.requestForegroundPermissionsAsync()
+        finalStatus = status
+      }
+
+      setGpsPermission(finalStatus)
+
+      if (finalStatus !== 'granted') {
+        // Permission denied — can still upload without GPS
+        Alert.alert(
+          'Location Access Denied',
+          'Your photo will be uploaded without GPS coordinates. You can enable location access in your device settings.'
+        )
+        return
+      }
+
+      // Permission granted — get current position
+      // accuracy: Balanced gives a good mix of speed and precision
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      })
+
+      setLatitude(location.coords.latitude)
+      setLongitude(location.coords.longitude)
+
+    } catch (error) {
+      console.log('Error fetching location:', error)
+      Alert.alert(
+        'Location Error',
+        'Could not get your GPS coordinates. Your photo can still be uploaded without location data.'
+      )
+    } finally {
+      setFetchingGps(false)
+    }
   }
 
-  // ── Format the timestamp for display ────────────────
-  // Converts ISO string to a readable date and time
+  // ── Format coordinates for display ──────────────────
+  const formatLat = (lat) => {
+    if (lat === null) return 'Unavailable'
+    return `${Math.abs(lat).toFixed(6)}° ${lat >= 0 ? 'N' : 'S'}`
+  }
+
+  const formatLng = (lng) => {
+    if (lng === null) return 'Unavailable'
+    return `${Math.abs(lng).toFixed(6)}° ${lng >= 0 ? 'E' : 'W'}`
+  }
+
+  // ── Format timestamp for display ────────────────────
   const formatTimestamp = (isoString) => {
     return new Date(isoString).toLocaleString('en-US', {
       month:  'short',
@@ -49,36 +113,26 @@ export default function PhotoReviewScreen() {
   }
 
   // ── Handle upload confirmation ───────────────────────
-  // Called when user taps the Confirm & Upload button.
-  // TODO: Replace the placeholder with your real API call
-  // to upload the photo and GPS data to your backend.
   const handleConfirm = async () => {
     setUploading(true)
     try {
       // ─────────────────────────────────────────────────
-      // TODO: Replace this with your real upload logic.
-      // Example:
-      //   const formData = new FormData()
-      //   formData.append('photo', { uri: photoUri, type: 'image/jpeg', name: 'photo.jpg' })
-      //   formData.append('latitude', latitude)
-      //   formData.append('longitude', longitude)
-      //   formData.append('timestamp', timestamp)
-      //   await fetch('https://your-api.com/upload', { method: 'POST', body: formData })
+      // TODO: Replace with your real upload API call.
+      // The data to send:
+      //   photoUri     — local file path of the photo
+      //   latitude     — GPS latitude (null if unavailable)
+      //   longitude    — GPS longitude (null if unavailable)
+      //   timestamp    — when the photo was taken
+      //   sharePublicly — whether to show GPS on heat map
       // ─────────────────────────────────────────────────
 
       // Simulated upload delay for now
       await new Promise((resolve) => setTimeout(resolve, 1500))
 
-      // Show success message
       Alert.alert(
         'Upload Successful!',
         'Your photo has been submitted. The Bortle Scale AI will analyze it shortly and update the heat map.',
-        [
-          {
-            text: 'View Map',
-            onPress: () => navigation.navigate('MapHome'),
-          },
-        ]
+        [{ text: 'View Map', onPress: () => navigation.navigate('MapHome') }]
       )
     } catch (error) {
       Alert.alert(
@@ -91,17 +145,12 @@ export default function PhotoReviewScreen() {
     }
   }
 
-  // ── Handle retake ────────────────────────────────────
-  // Goes back to the previous screen so the user can
-  // take a new photo
-  const handleRetake = () => {
-    navigation.goBack()
-  }
+  const handleRetake = () => navigation.goBack()
 
   return (
     <View style={styles.container}>
 
-      {/* ── Top bar with back button ── */}
+      {/* ── Top bar ── */}
       <TopBar title="Review Photo" showBack={true} showSearch={false} />
 
       <ScrollView contentContainerStyle={styles.scroll}>
@@ -109,14 +158,12 @@ export default function PhotoReviewScreen() {
         {/* ── Photo preview ── */}
         <View style={styles.photoCard}>
           {photoUri ? (
-            // Show the actual photo if we have a URI
             <Image
               source={{ uri: photoUri }}
               style={styles.photo}
               resizeMode="cover"
             />
           ) : (
-            // Placeholder shown in development when no photo is passed
             <View style={styles.photoPlaceholder}>
               <Text style={styles.photoPlaceholderIcon}>📷</Text>
               <Text style={styles.photoPlaceholderText}>
@@ -129,35 +176,40 @@ export default function PhotoReviewScreen() {
         {/* ── GPS Location card ── */}
         <View style={styles.infoCard}>
 
-          {/* Card header */}
           <View style={styles.infoHeader}>
             <Text style={styles.infoHeaderIcon}>📍</Text>
             <Text style={styles.infoHeaderText}>GPS Location</Text>
+            {/* Show a spinner while GPS is being fetched */}
+            {fetchingGps && (
+              <ActivityIndicator
+                size="small"
+                color={colors.accentCyan}
+                style={{ marginLeft: 'auto' }}
+              />
+            )}
           </View>
 
-          {/* Latitude row */}
+          {/* Latitude */}
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Latitude</Text>
             <Text style={styles.infoValue}>
-              {formatCoord(latitude, 'N', 'S')}
+              {fetchingGps ? 'Fetching...' : formatLat(latitude)}
             </Text>
           </View>
 
-          {/* Divider */}
           <View style={styles.infoDivider} />
 
-          {/* Longitude row */}
+          {/* Longitude */}
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Longitude</Text>
             <Text style={styles.infoValue}>
-              {formatCoord(longitude, 'E', 'W')}
+              {fetchingGps ? 'Fetching...' : formatLng(longitude)}
             </Text>
           </View>
 
-          {/* Divider */}
           <View style={styles.infoDivider} />
 
-          {/* Timestamp row */}
+          {/* Timestamp */}
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Captured</Text>
             <Text style={styles.infoValue}>{formatTimestamp(timestamp)}</Text>
@@ -165,15 +217,34 @@ export default function PhotoReviewScreen() {
 
         </View>
 
-        {/* ── Bortle prediction notice ── */}
-        {/* Explains to the user that AI analysis happens after upload */}
+        {/* ── Public GPS sharing toggle ── */}
+        {/* Lets the user decide if their location is visible
+            to other users on the community heat map */}
+        <View style={styles.shareCard}>
+          <View style={styles.shareTextWrap}>
+            <Text style={styles.shareTitle}>Share Location Publicly</Text>
+            <Text style={styles.shareDesc}>
+              Allow your GPS coordinates to appear on the community
+              heat map so other users can see observations in your area.
+            </Text>
+          </View>
+          <Switch
+            value={sharePublicly}
+            onValueChange={setSharePublicly}
+            trackColor={{ false: colors.textDim, true: colors.accentViolet }}
+            thumbColor="#fff"
+          />
+        </View>
+
+        {/* ── Bortle notice ── */}
         <View style={styles.noticeCard}>
           <Text style={styles.noticeIcon}>🤖</Text>
           <View style={styles.noticeTextWrap}>
             <Text style={styles.noticeTitle}>Bortle Scale Analysis</Text>
             <Text style={styles.noticeText}>
-              Your Bortle Scale rating will be calculated by our AI after your
-              photo is uploaded and analyzed. Results will appear on the heat map.
+              Your Bortle Scale rating will be calculated by our AI
+              after your photo is uploaded and analyzed. Results will
+              appear on the heat map.
             </Text>
           </View>
         </View>
@@ -181,7 +252,6 @@ export default function PhotoReviewScreen() {
         {/* ── Action buttons ── */}
         <View style={styles.actions}>
 
-          {/* Confirm and upload button */}
           <TouchableOpacity
             style={[styles.btnPrimary, uploading && styles.btnDisabled]}
             onPress={handleConfirm}
@@ -189,7 +259,6 @@ export default function PhotoReviewScreen() {
             activeOpacity={0.85}
           >
             {uploading ? (
-              // Show a spinner while uploading
               <View style={styles.uploadingRow}>
                 <ActivityIndicator color="#fff" size="small" />
                 <Text style={styles.btnPrimaryText}>Uploading...</Text>
@@ -199,7 +268,6 @@ export default function PhotoReviewScreen() {
             )}
           </TouchableOpacity>
 
-          {/* Retake button — goes back to camera */}
           <TouchableOpacity
             style={styles.btnOutline}
             onPress={handleRetake}
@@ -227,7 +295,7 @@ const styles = StyleSheet.create({
     gap: 14,
     paddingBottom: 40,
   },
-  // ── Photo preview card ──
+  // ── Photo card ──
   photoCard: {
     borderRadius: radius.lg,
     overflow: 'hidden',
@@ -239,7 +307,6 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 280,
   },
-  // Placeholder shown when no photo URI is available
   photoPlaceholder: {
     height: 280,
     alignItems: 'center',
@@ -252,7 +319,7 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textAlign: 'center',
   },
-  // ── GPS info card ──
+  // ── Info card ──
   infoCard: {
     backgroundColor: colors.spaceCard,
     borderWidth: 1,
@@ -297,6 +364,29 @@ const styles = StyleSheet.create({
     backgroundColor: colors.border,
     marginHorizontal: 14,
   },
+  // ── Public sharing toggle card ──
+  shareCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    backgroundColor: colors.spaceCard,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    padding: 16,
+  },
+  shareTextWrap: { flex: 1 },
+  shareTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.textBright,
+    marginBottom: 6,
+  },
+  shareDesc: {
+    fontSize: 13,
+    color: colors.textMuted,
+    lineHeight: 20,
+  },
   // ── Bortle notice card ──
   noticeCard: {
     flexDirection: 'row',
@@ -322,19 +412,14 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   // ── Action buttons ──
-  actions: {
-    gap: 10,
-  },
+  actions: { gap: 10 },
   btnPrimary: {
     backgroundColor: colors.accentViolet,
     borderRadius: radius.md,
     padding: 16,
     alignItems: 'center',
   },
-  // Dimmed style when the upload is in progress
-  btnDisabled: {
-    opacity: 0.6,
-  },
+  btnDisabled: { opacity: 0.6 },
   uploadingRow: {
     flexDirection: 'row',
     alignItems: 'center',
