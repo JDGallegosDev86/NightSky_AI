@@ -1,3 +1,4 @@
+import { uploadPhoto } from '../services/uploadService'
 import React, { useState } from 'react'
 import {
   View, Text, Image, TouchableOpacity,
@@ -53,6 +54,13 @@ export default function PhotoReviewScreen() {
   // TODO: Replace the placeholder with your real API call
   // to upload the photo and GPS data to your backend.
   const handleConfirm = async () => {
+    if (!photoUri) {
+  Alert.alert(
+    'No Photo Selected',
+    'Please take or select a photo before uploading.'
+  )
+  return
+}
     setUploading(true)
     try {
       // ─────────────────────────────────────────────────
@@ -67,7 +75,11 @@ export default function PhotoReviewScreen() {
       // ─────────────────────────────────────────────────
 
       // Simulated upload delay for now
-      await new Promise((resolve) => setTimeout(resolve, 1500))
+      const result = await uploadPhoto(photoUri, latitude, longitude, timestamp)
+
+if (!result.message) {
+  throw new Error(result.detail || 'Upload failed')
+}
 
       // Show success message
       Alert.alert(
