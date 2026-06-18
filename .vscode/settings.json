@@ -1,0 +1,6 @@
+{
+    "python.analysis.includeExtraPathSymbolsInSymbolSearch": true,
+    "files.watcherInclude": [
+        "./ai-model/training"
+    ]
+}
