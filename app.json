@@ -1,0 +1,42 @@
+{
+  "expo": {
+    "name": "NightSky AI",
+    "slug": "nightsky-ai",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./src/assets/logo.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#080d1b"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.nightskyai.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "NightSky AI uses your location to record where night sky photos are taken and to contribute to the light pollution heat map.",
+        "NSLocationAlwaysUsageDescription": "NightSky AI uses your location to record where night sky photos are taken and to contribute to the light pollution heat map."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#080d1b"
+      },
+      "package": "com.nightskyai.app",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
+    },
+    "web": {
+      "favicon": "./src/assets/logo.png"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "NightSky AI uses your location to record where night sky photos are taken and to contribute to the light pollution heat map."
+        }
+      ]
+    ]
+  }
+}

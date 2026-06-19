@@ -2,12 +2,14 @@ import { registerUser } from '../services/authServices'
 import React, { useState } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity,
-  StyleSheet, ScrollView, Switch, KeyboardAvoidingView, Platform,
+  StyleSheet, ScrollView, Switch, KeyboardAvoidingView,
+  Platform, Alert,
 } from 'react-native'
 import { useNavigation } from '@react-navigation/native'
-import { colors, radius } from '../theme'
-import NightSkyLogo from '../components/NightSkyLogo'
+import * as Location from 'expo-location'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import NightSkyLogo from '../components/NightSkyLogo'
+import { colors, radius } from '../theme'
 
 export default function RegisterScreen() {
   const navigation = useNavigation()
@@ -20,6 +22,7 @@ export default function RegisterScreen() {
   // Tracks whether the user agreed to share their GPS location
   const [gpsConsent, setGpsConsent]   = useState(false)
 
+<<<<<<< HEAD
   // ── Check if onboarding should be shown ─────────────────
 // Same logic as LoginScreen — new users should always
 // see onboarding after registering for the first time.
@@ -46,21 +49,90 @@ const handleContinue = async () => {
   } catch (error) {
     console.log(error)
     alert('Could not connect to backend')
+=======
+  // Tracks whether GPS permission was actually granted by the device
+  const [gpsGranted, setGpsGranted]   = useState(false)
+
+  // ── Handle GPS consent toggle ────────────────────────
+  // When the user turns on the GPS toggle, we immediately
+  // request location permission from the device.
+  // If they deny it, we turn the toggle back off.
+  const handleGpsToggle = async () => {
+    if (gpsConsent) {
+      // User is turning GPS OFF — just update the toggle
+      setGpsConsent(false)
+      setGpsGranted(false)
+      return
+    }
+
+    // User is turning GPS ON — request device permission
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync()
+
+      if (status === 'granted') {
+        // Permission granted — turn toggle on
+        setGpsConsent(true)
+        setGpsGranted(true)
+        Alert.alert(
+          'Location Access Granted',
+          'NightSky AI can now use your GPS location for photo uploads and heat map contributions.'
+        )
+      } else {
+        // Permission denied — keep toggle off and explain why
+        setGpsConsent(false)
+        setGpsGranted(false)
+        Alert.alert(
+          'Location Access Denied',
+          'You can enable location access later in your device settings or from the Privacy screen in the app.'
+        )
+      }
+    } catch (error) {
+      console.log('Error requesting location permission:', error)
+      setGpsConsent(false)
+    }
   }
-}
+
+  // ── Check if onboarding should be shown ─────────────
+  // New users always see onboarding after registering.
+  const handleContinue = async () => {
+    try {
+      // TEMPORARY: forces onboarding to show every time for testing
+      // Remove this line when done testing
+      await AsyncStorage.removeItem('lastOnboardingDate')
+
+      const lastDate = await AsyncStorage.getItem('lastOnboardingDate')
+
+      if (!lastDate) {
+        navigation.navigate('Onboarding')
+        return
+      }
+
+      const daysSince = (new Date() - new Date(lastDate)) / (1000 * 60 * 60 * 24)
+
+      if (daysSince >= 60) {
+        navigation.navigate('Onboarding')
+      } else {
+        navigation.navigate('MapHome')
+      }
+    } catch (error) {
+      navigation.navigate('MapHome')
+    }
+>>>>>>> origin/Jacob-Graffis-Dev-Space
+  }
 
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'} // Handles keyboard differently on iOS vs Android
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView
         contentContainerStyle={styles.scroll}
-        keyboardShouldPersistTaps="handled" // Lets users tap buttons without dismissing keyboard first
+        keyboardShouldPersistTaps="handled"
       >
 
+        {/* ── Logo ── */}
         <View style={styles.logoWrap}>
-        <NightSkyLogo size={120} />
+          <NightSkyLogo size={120} />
         </View>
 
         {/* ── Section label ── */}
@@ -75,7 +147,7 @@ const handleContinue = async () => {
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
-            autoCapitalize="none"           // Don't auto-capitalize emails
+            autoCapitalize="none"
           />
           <TextInput
             style={styles.input}
@@ -83,7 +155,7 @@ const handleContinue = async () => {
             placeholderTextColor={colors.textMuted}
             value={password}
             onChangeText={setPassword}
-            secureTextEntry                 // Hides password characters
+            secureTextEntry
           />
           <TextInput
             style={styles.input}
@@ -91,19 +163,27 @@ const handleContinue = async () => {
             placeholderTextColor={colors.textMuted}
             value={confirmPass}
             onChangeText={setConfirmPass}
-            secureTextEntry                 // Hides password characters
+            secureTextEntry
           />
         </View>
 
         {/* ── GPS consent toggle ── */}
-        {/* Asks the user if they want to share their location data */}
+        {/* Tapping this triggers a real device permission request */}
         <View style={styles.gpsRow}>
-          <Text style={styles.gpsText}>
-            Do you want to share GPS location data?
-          </Text>
+          <View style={styles.gpsTextWrap}>
+            <Text style={styles.gpsText}>
+              Share GPS Location Data
+            </Text>
+            {/* Show granted/denied status below the label */}
+            <Text style={styles.gpsStatus}>
+              {gpsGranted
+                ? '✓ Location access granted'
+                : 'Tap to request location access'}
+            </Text>
+          </View>
           <Switch
             value={gpsConsent}
-            onValueChange={setGpsConsent}   // Flips true/false when tapped
+            onValueChange={handleGpsToggle}
             trackColor={{ false: colors.textDim, true: colors.accentViolet }}
             thumbColor="#fff"
           />
@@ -112,7 +192,6 @@ const handleContinue = async () => {
         {/* ── Action buttons ── */}
         <View style={styles.actions}>
 
-          {/* Main continue button — TODO: hook up real registration API */}
           <TouchableOpacity
             style={styles.btnPrimary}
             onPress={handleContinue}
@@ -121,7 +200,6 @@ const handleContinue = async () => {
             <Text style={styles.btnPrimaryText}>Continue</Text>
           </TouchableOpacity>
 
-          {/* Divider line with 'or' text */}
           <View style={styles.dividerRow}>
             <View style={styles.dividerLine} />
             <Text style={styles.dividerText}>or</Text>
@@ -152,9 +230,13 @@ const styles = StyleSheet.create({
   },
   scroll: {
     flexGrow: 1,
-    justifyContent: 'flex-end', // Push content toward the bottom like the wireframe
+    justifyContent: 'flex-end',
     padding: 24,
     paddingBottom: 40,
+  },
+  logoWrap: {
+    alignItems: 'center',
+    marginBottom: 44,
   },
   sectionLabel: {
     fontSize: 12,
@@ -177,11 +259,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.textBright,
   },
-  logoWrap: {
-  alignItems: 'center',
-  marginBottom: 44,
-},
-  // GPS consent row — toggle sits on the right, text on the left
+  // GPS consent row
   gpsRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -193,11 +271,19 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     gap: 12,
   },
+  gpsTextWrap: {
+    flex: 1,
+    gap: 4,
+  },
   gpsText: {
-    flex: 1,                    // Takes up all space except the toggle
-    fontSize: 13,
-    color: colors.textPrimary,
-    lineHeight: 18,
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textBright,
+  },
+  // Shows granted/denied status below the GPS label
+  gpsStatus: {
+    fontSize: 12,
+    color: colors.textMuted,
   },
   actions: { gap: 10 },
   btnPrimary: {
