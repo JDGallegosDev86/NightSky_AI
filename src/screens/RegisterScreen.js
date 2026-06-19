@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { registerUser } from '../services/authServices'
 import React, { useState } from 'react'
 import {
@@ -7,7 +8,6 @@ import {
 } from 'react-native'
 import { useNavigation } from '@react-navigation/native'
 import * as Location from 'expo-location'
-import AsyncStorage from '@react-native-async-storage/async-storage'
 import NightSkyLogo from '../components/NightSkyLogo'
 import { colors, radius } from '../theme'
 
@@ -15,43 +15,15 @@ export default function RegisterScreen() {
   const navigation = useNavigation()
 
   // Track what the user types into each field
-  const [email, setEmail]             = useState('')
-  const [password, setPassword]       = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [confirmPass, setConfirmPass] = useState('')
 
   // Tracks whether the user agreed to share their GPS location
-  const [gpsConsent, setGpsConsent]   = useState(false)
+  const [gpsConsent, setGpsConsent] = useState(false)
 
-<<<<<<< HEAD
-  // ── Check if onboarding should be shown ─────────────────
-// Same logic as LoginScreen — new users should always
-// see onboarding after registering for the first time.
-const handleContinue = async () => {
-  if (!email || !password || !confirmPass) {
-    alert('Please fill in all fields')
-    return
-  }
-
-  if (password !== confirmPass) {
-    alert('Passwords do not match')
-    return
-  }
-
-  try {
-    const result = await registerUser(email, password)
-
-    if (result.message) {
-      alert('Registration successful')
-      navigation.navigate('Login')
-    } else {
-      alert(result.detail || 'Registration failed')
-    }
-  } catch (error) {
-    console.log(error)
-    alert('Could not connect to backend')
-=======
   // Tracks whether GPS permission was actually granted by the device
-  const [gpsGranted, setGpsGranted]   = useState(false)
+  const [gpsGranted, setGpsGranted] = useState(false)
 
   // ── Handle GPS consent toggle ────────────────────────
   // When the user turns on the GPS toggle, we immediately
@@ -73,6 +45,7 @@ const handleContinue = async () => {
         // Permission granted — turn toggle on
         setGpsConsent(true)
         setGpsGranted(true)
+
         Alert.alert(
           'Location Access Granted',
           'NightSky AI can now use your GPS location for photo uploads and heat map contributions.'
@@ -81,6 +54,7 @@ const handleContinue = async () => {
         // Permission denied — keep toggle off and explain why
         setGpsConsent(false)
         setGpsGranted(false)
+
         Alert.alert(
           'Location Access Denied',
           'You can enable location access later in your device settings or from the Privacy screen in the app.'
@@ -89,35 +63,56 @@ const handleContinue = async () => {
     } catch (error) {
       console.log('Error requesting location permission:', error)
       setGpsConsent(false)
+      setGpsGranted(false)
     }
   }
 
-  // ── Check if onboarding should be shown ─────────────
-  // New users always see onboarding after registering.
+  // ── Check if onboarding should be shown ─────────────────
+  // Same logic as LoginScreen — new users should always
+  // see onboarding after registering for the first time.
   const handleContinue = async () => {
+    if (!email || !password || !confirmPass) {
+      alert('Please fill in all fields')
+      return
+    }
+
+    if (password !== confirmPass) {
+      alert('Passwords do not match')
+      return
+    }
+
     try {
-      // TEMPORARY: forces onboarding to show every time for testing
-      // Remove this line when done testing
-      await AsyncStorage.removeItem('lastOnboardingDate')
+      const result = await registerUser(email, password)
 
-      const lastDate = await AsyncStorage.getItem('lastOnboardingDate')
+      if (result.message) {
+        alert('Registration successful')
 
-      if (!lastDate) {
-        navigation.navigate('Onboarding')
-        return
-      }
+        // TEMPORARY: forces onboarding to show every time for testing
+        // Remove this line when done testing
+        await AsyncStorage.removeItem('lastOnboardingDate')
 
-      const daysSince = (new Date() - new Date(lastDate)) / (1000 * 60 * 60 * 24)
+        const lastDate = await AsyncStorage.getItem('lastOnboardingDate')
 
-      if (daysSince >= 60) {
-        navigation.navigate('Onboarding')
+        if (!lastDate) {
+          navigation.navigate('Onboarding')
+          return
+        }
+
+        const daysSince =
+          (new Date() - new Date(lastDate)) / (1000 * 60 * 60 * 24)
+
+        if (daysSince >= 60) {
+          navigation.navigate('Onboarding')
+        } else {
+          navigation.navigate('MapHome')
+        }
       } else {
-        navigation.navigate('MapHome')
+        alert(result.detail || 'Registration failed')
       }
     } catch (error) {
-      navigation.navigate('MapHome')
+      console.log(error)
+      alert('Could not connect to backend')
     }
->>>>>>> origin/Jacob-Graffis-Dev-Space
   }
 
   return (
@@ -129,7 +124,6 @@ const handleContinue = async () => {
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
       >
-
         {/* ── Logo ── */}
         <View style={styles.logoWrap}>
           <NightSkyLogo size={120} />
@@ -174,6 +168,7 @@ const handleContinue = async () => {
             <Text style={styles.gpsText}>
               Share GPS Location Data
             </Text>
+
             {/* Show granted/denied status below the label */}
             <Text style={styles.gpsStatus}>
               {gpsGranted
@@ -181,6 +176,7 @@ const handleContinue = async () => {
                 : 'Tap to request location access'}
             </Text>
           </View>
+
           <Switch
             value={gpsConsent}
             onValueChange={handleGpsToggle}
@@ -191,7 +187,6 @@ const handleContinue = async () => {
 
         {/* ── Action buttons ── */}
         <View style={styles.actions}>
-
           <TouchableOpacity
             style={styles.btnPrimary}
             onPress={handleContinue}
@@ -215,7 +210,6 @@ const handleContinue = async () => {
           <TouchableOpacity style={styles.btnOutline} activeOpacity={0.8}>
             <Text style={styles.btnOutlineText}> Continue with Apple</Text>
           </TouchableOpacity>
-
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

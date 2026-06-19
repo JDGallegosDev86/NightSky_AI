@@ -1,9 +1,6 @@
-<<<<<<< HEAD
+
 import { uploadPhoto } from '../services/uploadService'
-import React, { useState } from 'react'
-=======
 import React, { useState, useEffect } from 'react'
->>>>>>> origin/Jacob-Graffis-Dev-Space
 import {
   View, Text, Image, TouchableOpacity,
   StyleSheet, ScrollView, Alert, ActivityIndicator, Switch,
