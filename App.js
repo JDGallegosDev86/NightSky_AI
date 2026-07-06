@@ -17,6 +17,8 @@ import NotificationsScreen from './src/screens/NotificationsScreen'
 import PrivacyScreen from './src/screens/PrivacyScreen'
 import UploadedImagesScreen from './src/screens/UploadedImagesScreen'
 import ImageDetailScreen    from './src/screens/ImageDetailScreen'
+import CameraScreen from './src/screens/CameraScreen'
+import ResultsScreen from './src/screens/ResultsScreen'
 
 const Stack = createNativeStackNavigator()
 
@@ -41,7 +43,9 @@ export default function App() {
         <Stack.Screen name="Notifications" component={NotificationsScreen} />
         <Stack.Screen name="Privacy"      component={PrivacyScreen} />
         <Stack.Screen name="UploadedImages" component={UploadedImagesScreen} />
-<Stack.Screen name="ImageDetail"          component={ImageDetailScreen} />
+        <Stack.Screen name="ImageDetail"          component={ImageDetailScreen} />
+        <Stack.Screen name="Camera" component={CameraScreen} />
+        <Stack.Screen name="Results" component={ResultsScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   )

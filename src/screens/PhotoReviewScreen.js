@@ -1,14 +1,14 @@
 
-import { uploadPhoto } from '../services/uploadService'
 import React, { useState, useEffect } from 'react'
 import {
   View, Text, Image, TouchableOpacity,
-  StyleSheet, ScrollView, Alert, ActivityIndicator, Switch,
+  StyleSheet, ScrollView, Alert, ActivityIndicator, Switch, Platform,
 } from 'react-native'
 import { useNavigation, useRoute } from '@react-navigation/native'
 import * as Location from 'expo-location'
 import TopBar from '../components/TopBar'
 import { colors, radius } from '../theme'
+
 
 export default function PhotoReviewScreen() {
   const navigation = useNavigation()
@@ -115,48 +115,75 @@ export default function PhotoReviewScreen() {
   }
 
   // ── Handle upload confirmation ───────────────────────
-  const handleConfirm = async () => {
-    if (!photoUri) {
-  Alert.alert(
-    'No Photo Selected',
-    'Please take or select a photo before uploading.'
-  )
-  return
-}
-    setUploading(true)
-    try {
-      // ─────────────────────────────────────────────────
-      // TODO: Replace with your real upload API call.
-      // The data to send:
-      //   photoUri     — local file path of the photo
-      //   latitude     — GPS latitude (null if unavailable)
-      //   longitude    — GPS longitude (null if unavailable)
-      //   timestamp    — when the photo was taken
-      //   sharePublicly — whether to show GPS on heat map
-      // ─────────────────────────────────────────────────
+const handleConfirm = async () => {
+  setUploading(true)
+  try {
+    const formData = new FormData()
 
-      // Simulated upload delay for now
-      const result = await uploadPhoto(photoUri, latitude, longitude, timestamp)
-
-if (!result.message) {
-  throw new Error(result.detail || 'Upload failed')
-}
-
-      Alert.alert(
-        'Upload Successful!',
-        'Your photo has been submitted. The Bortle Scale AI will analyze it shortly and update the heat map.',
-        [{ text: 'View Map', onPress: () => navigation.navigate('MapHome') }]
-      )
-    } catch (error) {
-      Alert.alert(
-        'Upload Failed',
-        'Something went wrong. Please check your connection and try again.',
-        [{ text: 'OK' }]
-      )
-    } finally {
-      setUploading(false)
+    // ── Platform-aware photo attachment ─────────────────
+    // Web and native handle file URIs differently.
+    // On web: fetch() converts the URI to a Blob
+    // On native (iOS/Android): pass the URI object directly
+    if (Platform.OS === 'web') {
+      // Web — convert URI to Blob first
+      const photoResponse = await fetch(photoUri)
+      const photoBlob = await photoResponse.blob()
+      formData.append('photo', photoBlob, 'nightsky_photo.jpg')
+    } else {
+      // Native — pass URI object directly, React Native handles it
+      formData.append('photo', {
+        uri:  photoUri,
+        type: 'image/jpeg',
+        name: 'nightsky_photo.jpg',
+      })
     }
+
+    // Attach GPS and metadata if available
+    if (latitude)  formData.append('latitude',  String(latitude))
+    if (longitude) formData.append('longitude', String(longitude))
+    if (timestamp) formData.append('timestamp', timestamp)
+    formData.append('sharePublicly', String(sharePublicly))
+
+    // ── Platform-aware headers ───────────────────────────
+    // On web: don't set Content-Type — browser sets it automatically
+    // On native: set it manually so React Native formats it correctly
+    const headers = Platform.OS === 'web'
+      ? {}
+      : { 'Content-Type': 'multipart/form-data' }
+
+    // Send to the backend
+    const response = await fetch('http://127.0.0.1:8000/upload-photo', {
+      method: 'POST',
+      headers,
+      body: formData,
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error(data.detail || 'Upload failed')
+    }
+
+    // Navigate to results screen with the analysis data
+    navigation.navigate('Results', {
+      bortleLevel: data.bortle_level,
+      confidence:  data.confidence,
+      photoUri:    photoUri,
+      latitude:    latitude,
+      longitude:   longitude,
+    })
+
+  } catch (error) {
+    console.log('Upload error:', error)
+    Alert.alert(
+      'Upload Failed',
+      'Could not connect to the backend. Make sure it is running and try again.',
+      [{ text: 'OK' }]
+    )
+  } finally {
+    setUploading(false)
   }
+}
 
   const handleRetake = () => navigation.goBack()
 

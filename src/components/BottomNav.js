@@ -27,7 +27,7 @@ export default function BottomNav() {
       {/* ── Center tab: Camera upload button ── */}
       <TouchableOpacity
         style={styles.centerBtn}
-        onPress={() => navigation.navigate('PhotoReview')}
+        onPress={() => navigation.navigate('Camera')}
         activeOpacity={0.8}
       >
         <Text style={styles.centerIcon}>📷</Text>
