@@ -1,10 +1,17 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
-from app.auth import hash_password, verify_password, create_access_token
+from sqlalchemy.orm import Session
+
+from app.auth import (
+    hash_password,
+    verify_password,
+    create_access_token
+)
+
+from app.database import SessionLocal
+from app.models import User
 
 router = APIRouter()
-
-fake_users_db = {}
 
 
 class UserRegister(BaseModel):
@@ -17,20 +24,40 @@ class UserLogin(BaseModel):
     password: str
 
 
+def get_db():
+    db = SessionLocal()
+
+    try:
+        yield db
+
+    finally:
+        db.close()
+
+
 @router.post("/register")
-def register_user(user: UserRegister):
-    if user.email in fake_users_db:
+def register_user(
+    user: UserRegister,
+    db: Session = Depends(get_db)
+):
+
+    existing_user = db.query(User).filter(
+        User.email == user.email
+    ).first()
+
+    if existing_user:
         raise HTTPException(
             status_code=400,
             detail="User already exists"
         )
 
-    hashed_password = hash_password(user.password)
+    new_user = User(
+        email=user.email,
+        hashed_password=hash_password(user.password)
+    )
 
-    fake_users_db[user.email] = {
-        "email": user.email,
-        "hashed_password": hashed_password
-    }
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
 
     return {
         "message": "User registered successfully"
@@ -38,8 +65,14 @@ def register_user(user: UserRegister):
 
 
 @router.post("/login")
-def login_user(user: UserLogin):
-    db_user = fake_users_db.get(user.email)
+def login_user(
+    user: UserLogin,
+    db: Session = Depends(get_db)
+):
+
+    db_user = db.query(User).filter(
+        User.email == user.email
+    ).first()
 
     if db_user is None:
         raise HTTPException(
@@ -47,14 +80,17 @@ def login_user(user: UserLogin):
             detail="Invalid email or password"
         )
 
-    if not verify_password(user.password, db_user["hashed_password"]):
+    if not verify_password(
+        user.password,
+        db_user.hashed_password
+    ):
         raise HTTPException(
             status_code=401,
             detail="Invalid email or password"
         )
 
     token = create_access_token({
-        "sub": user.email
+        "sub": db_user.email
     })
 
     return {

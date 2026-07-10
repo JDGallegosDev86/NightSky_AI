@@ -1,36 +1,54 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import jwt, JWTError
+from jose import jwt, JWTError, ExpiredSignatureError
 from passlib.context import CryptContext
 
 
-# secret key for JWT
+# Secret key used to sign and verify JWT tokens
 SECRET_KEY = "nightsky_super_secret_key"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
-# password hashing setup
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Password hashing setup
+pwd_context = CryptContext(
+    schemes=["bcrypt"],
+    deprecated="auto"
+)
 
-# JWT security setup
+# JWT Bearer security setup
 security = HTTPBearer()
 
 
+# Hashes a password before storing it in the database
 def hash_password(password: str):
     return pwd_context.hash(password[:72])
 
 
-def verify_password(plain_password: str, hashed_password: str):
-    return pwd_context.verify(plain_password[:72], hashed_password)
+# Compares the entered password with the stored password hash
+def verify_password(
+    plain_password: str,
+    hashed_password: str
+):
+    return pwd_context.verify(
+        plain_password[:72],
+        hashed_password
+    )
 
 
+# Creates a signed JWT access token
 def create_access_token(data: dict):
     to_encode = data.copy()
 
-    expire = datetime.now() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
+    # JWT expiration times must use UTC
+    expire = datetime.now(timezone.utc) + timedelta(
+        minutes=ACCESS_TOKEN_EXPIRE_MINUTES
+    )
+
+    to_encode.update({
+        "exp": expire
+    })
 
     encoded_jwt = jwt.encode(
         to_encode,
@@ -41,7 +59,10 @@ def create_access_token(data: dict):
     return encoded_jwt
 
 
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+# Verifies the JWT token sent by the frontend
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
     token = credentials.credentials
 
     try:
@@ -54,9 +75,23 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
         email = payload.get("sub")
 
         if email is None:
-            raise HTTPException(status_code=401, detail="Invalid token")
+            raise HTTPException(
+                status_code=401,
+                detail="Token does not contain a user email"
+            )
 
         return email
 
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    except ExpiredSignatureError:
+        raise HTTPException(
+            status_code=401,
+            detail="Token has expired. Please log in again."
+        )
+
+    except JWTError as error:
+        print("JWT verification error:", str(error))
+
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid authentication token"
+        )

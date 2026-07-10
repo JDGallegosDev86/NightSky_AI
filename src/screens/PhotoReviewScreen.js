@@ -1,29 +1,35 @@
-
-import { uploadPhoto } from '../services/uploadService'
-import React, { useState, useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import {
-  View, Text, Image, TouchableOpacity,
-  StyleSheet, ScrollView, Alert, ActivityIndicator, Switch,
+  View,
+  Text,
+  Image,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  Alert,
+  ActivityIndicator,
+  Switch,
 } from 'react-native'
 import { useNavigation, useRoute } from '@react-navigation/native'
 import * as Location from 'expo-location'
 import TopBar from '../components/TopBar'
 import { colors, radius } from '../theme'
+import { uploadPhoto } from '../services/uploadService'
 
 export default function PhotoReviewScreen() {
   const navigation = useNavigation()
-  const route      = useRoute()
+  const route = useRoute()
 
   // ── Route params ─────────────────────────────────────
   // photoUri and timestamp passed in from camera feature
   const {
-    photoUri  = null,
+    photoUri = null,
     timestamp = new Date().toISOString(),
   } = route.params || {}
 
   // ── GPS state ────────────────────────────────────────
   // Stores the real GPS coordinates fetched from the device
-  const [latitude, setLatitude]   = useState(null)
+  const [latitude, setLatitude] = useState(null)
   const [longitude, setLongitude] = useState(null)
 
   // Tracks whether we are currently fetching GPS coordinates
@@ -49,15 +55,21 @@ export default function PhotoReviewScreen() {
 
   const fetchLocation = async () => {
     setFetchingGps(true)
+
     try {
       // Check if we already have permission
-      const { status: existingStatus } = await Location.getForegroundPermissionsAsync()
+      const {
+        status: existingStatus,
+      } = await Location.getForegroundPermissionsAsync()
 
       let finalStatus = existingStatus
 
       // If not granted yet, request it now
       if (existingStatus !== 'granted') {
-        const { status } = await Location.requestForegroundPermissionsAsync()
+        const {
+          status,
+        } = await Location.requestForegroundPermissionsAsync()
+
         finalStatus = status
       }
 
@@ -80,9 +92,9 @@ export default function PhotoReviewScreen() {
 
       setLatitude(location.coords.latitude)
       setLongitude(location.coords.longitude)
-
     } catch (error) {
       console.log('Error fetching location:', error)
+
       Alert.alert(
         'Location Error',
         'Could not get your GPS coordinates. Your photo can still be uploaded without location data.'
@@ -94,63 +106,75 @@ export default function PhotoReviewScreen() {
 
   // ── Format coordinates for display ──────────────────
   const formatLat = (lat) => {
-    if (lat === null) return 'Unavailable'
+    if (lat === null) {
+      return 'Unavailable'
+    }
+
     return `${Math.abs(lat).toFixed(6)}° ${lat >= 0 ? 'N' : 'S'}`
   }
 
   const formatLng = (lng) => {
-    if (lng === null) return 'Unavailable'
+    if (lng === null) {
+      return 'Unavailable'
+    }
+
     return `${Math.abs(lng).toFixed(6)}° ${lng >= 0 ? 'E' : 'W'}`
   }
 
   // ── Format timestamp for display ────────────────────
   const formatTimestamp = (isoString) => {
     return new Date(isoString).toLocaleString('en-US', {
-      month:  'short',
-      day:    'numeric',
-      year:   'numeric',
-      hour:   '2-digit',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
       minute: '2-digit',
     })
   }
 
-  // ── Handle upload confirmation ───────────────────────
+  // ── Handle upload confirmation ──────────────────────
   const handleConfirm = async () => {
     if (!photoUri) {
-  Alert.alert(
-    'No Photo Selected',
-    'Please take or select a photo before uploading.'
-  )
-  return
-}
-    setUploading(true)
-    try {
-      // ─────────────────────────────────────────────────
-      // TODO: Replace with your real upload API call.
-      // The data to send:
-      //   photoUri     — local file path of the photo
-      //   latitude     — GPS latitude (null if unavailable)
-      //   longitude    — GPS longitude (null if unavailable)
-      //   timestamp    — when the photo was taken
-      //   sharePublicly — whether to show GPS on heat map
-      // ─────────────────────────────────────────────────
-
-      // Simulated upload delay for now
-      const result = await uploadPhoto(photoUri, latitude, longitude, timestamp)
-
-if (!result.message) {
-  throw new Error(result.detail || 'Upload failed')
-}
-
       Alert.alert(
-        'Upload Successful!',
-        'Your photo has been submitted. The Bortle Scale AI will analyze it shortly and update the heat map.',
-        [{ text: 'View Map', onPress: () => navigation.navigate('MapHome') }]
+        'No Photo Selected',
+        'Please capture or select a photo before uploading.'
       )
+      return
+    }
+
+    setUploading(true)
+
+    try {
+      // uploadPhoto handles FormData, the JWT token,
+      // platform differences, and the backend request.
+      const data = await uploadPhoto(
+        photoUri,
+        latitude,
+        longitude,
+        timestamp,
+        sharePublicly
+      )
+
+      // Navigate to results screen with the analysis data
+      navigation.navigate('Results', {
+        bortleLevel: data.bortle_level,
+        confidence: data.confidence,
+        sqmEstimate: data.sqm_estimate,
+        analysis: data.analysis,
+        pipeline: data.pipeline,
+        uploadId: data.upload_id,
+        photoUri,
+        latitude,
+        longitude,
+        timestamp,
+        sharePublicly,
+      })
     } catch (error) {
+      console.log('Upload error:', error)
+
       Alert.alert(
         'Upload Failed',
-        'Something went wrong. Please check your connection and try again.',
+        error.message || 'The photo could not be uploaded.',
         [{ text: 'OK' }]
       )
     } finally {
@@ -158,16 +182,21 @@ if (!result.message) {
     }
   }
 
-  const handleRetake = () => navigation.goBack()
+  // ── Return to the camera screen ─────────────────────
+  const handleRetake = () => {
+    navigation.goBack()
+  }
 
   return (
     <View style={styles.container}>
-
       {/* ── Top bar ── */}
-      <TopBar title="Review Photo" showBack={true} showSearch={false} />
+      <TopBar
+        title="Review Photo"
+        showBack={true}
+        showSearch={false}
+      />
 
       <ScrollView contentContainerStyle={styles.scroll}>
-
         {/* ── Photo preview ── */}
         <View style={styles.photoCard}>
           {photoUri ? (
@@ -179,6 +208,7 @@ if (!result.message) {
           ) : (
             <View style={styles.photoPlaceholder}>
               <Text style={styles.photoPlaceholderIcon}>📷</Text>
+
               <Text style={styles.photoPlaceholderText}>
                 Photo preview will appear here
               </Text>
@@ -188,16 +218,19 @@ if (!result.message) {
 
         {/* ── GPS Location card ── */}
         <View style={styles.infoCard}>
-
           <View style={styles.infoHeader}>
             <Text style={styles.infoHeaderIcon}>📍</Text>
-            <Text style={styles.infoHeaderText}>GPS Location</Text>
+
+            <Text style={styles.infoHeaderText}>
+              GPS Location
+            </Text>
+
             {/* Show a spinner while GPS is being fetched */}
             {fetchingGps && (
               <ActivityIndicator
                 size="small"
                 color={colors.accentCyan}
-                style={{ marginLeft: 'auto' }}
+                style={styles.gpsSpinner}
               />
             )}
           </View>
@@ -205,8 +238,11 @@ if (!result.message) {
           {/* Latitude */}
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Latitude</Text>
+
             <Text style={styles.infoValue}>
-              {fetchingGps ? 'Fetching...' : formatLat(latitude)}
+              {fetchingGps
+                ? 'Fetching...'
+                : formatLat(latitude)}
             </Text>
           </View>
 
@@ -215,8 +251,11 @@ if (!result.message) {
           {/* Longitude */}
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Longitude</Text>
+
             <Text style={styles.infoValue}>
-              {fetchingGps ? 'Fetching...' : formatLng(longitude)}
+              {fetchingGps
+                ? 'Fetching...'
+                : formatLng(longitude)}
             </Text>
           </View>
 
@@ -225,9 +264,11 @@ if (!result.message) {
           {/* Timestamp */}
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Captured</Text>
-            <Text style={styles.infoValue}>{formatTimestamp(timestamp)}</Text>
-          </View>
 
+            <Text style={styles.infoValue}>
+              {formatTimestamp(timestamp)}
+            </Text>
+          </View>
         </View>
 
         {/* ── Public GPS sharing toggle ── */}
@@ -235,16 +276,23 @@ if (!result.message) {
             to other users on the community heat map */}
         <View style={styles.shareCard}>
           <View style={styles.shareTextWrap}>
-            <Text style={styles.shareTitle}>Share Location Publicly</Text>
+            <Text style={styles.shareTitle}>
+              Share Location Publicly
+            </Text>
+
             <Text style={styles.shareDesc}>
               Allow your GPS coordinates to appear on the community
               heat map so other users can see observations in your area.
             </Text>
           </View>
+
           <Switch
             value={sharePublicly}
             onValueChange={setSharePublicly}
-            trackColor={{ false: colors.textDim, true: colors.accentViolet }}
+            trackColor={{
+              false: colors.textDim,
+              true: colors.accentViolet,
+            }}
             thumbColor="#fff"
           />
         </View>
@@ -252,8 +300,12 @@ if (!result.message) {
         {/* ── Bortle notice ── */}
         <View style={styles.noticeCard}>
           <Text style={styles.noticeIcon}>🤖</Text>
+
           <View style={styles.noticeTextWrap}>
-            <Text style={styles.noticeTitle}>Bortle Scale Analysis</Text>
+            <Text style={styles.noticeTitle}>
+              Bortle Scale Analysis
+            </Text>
+
             <Text style={styles.noticeText}>
               Your Bortle Scale rating will be calculated by our AI
               after your photo is uploaded and analyzed. Results will
@@ -264,20 +316,30 @@ if (!result.message) {
 
         {/* ── Action buttons ── */}
         <View style={styles.actions}>
-
           <TouchableOpacity
-            style={[styles.btnPrimary, uploading && styles.btnDisabled]}
+            style={[
+              styles.btnPrimary,
+              uploading && styles.btnDisabled,
+            ]}
             onPress={handleConfirm}
             disabled={uploading}
             activeOpacity={0.85}
           >
             {uploading ? (
               <View style={styles.uploadingRow}>
-                <ActivityIndicator color="#fff" size="small" />
-                <Text style={styles.btnPrimaryText}>Uploading...</Text>
+                <ActivityIndicator
+                  color="#fff"
+                  size="small"
+                />
+
+                <Text style={styles.btnPrimaryText}>
+                  Uploading...
+                </Text>
               </View>
             ) : (
-              <Text style={styles.btnPrimaryText}>Confirm & Upload</Text>
+              <Text style={styles.btnPrimaryText}>
+                Confirm & Upload
+              </Text>
             )}
           </TouchableOpacity>
 
@@ -287,11 +349,11 @@ if (!result.message) {
             disabled={uploading}
             activeOpacity={0.8}
           >
-            <Text style={styles.btnOutlineText}>Retake Photo</Text>
+            <Text style={styles.btnOutlineText}>
+              Retake Photo
+            </Text>
           </TouchableOpacity>
-
         </View>
-
       </ScrollView>
     </View>
   )
@@ -308,6 +370,7 @@ const styles = StyleSheet.create({
     gap: 14,
     paddingBottom: 40,
   },
+
   // ── Photo card ──
   photoCard: {
     borderRadius: radius.lg,
@@ -326,12 +389,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 12,
   },
-  photoPlaceholderIcon: { fontSize: 48 },
+  photoPlaceholderIcon: {
+    fontSize: 48,
+  },
   photoPlaceholderText: {
     fontSize: 14,
     color: colors.textMuted,
     textAlign: 'center',
   },
+
   // ── Info card ──
   infoCard: {
     backgroundColor: colors.spaceCard,
@@ -348,13 +414,18 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  infoHeaderIcon: { fontSize: 16 },
+  infoHeaderIcon: {
+    fontSize: 16,
+  },
   infoHeaderText: {
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 1,
     textTransform: 'uppercase',
     color: colors.textMuted,
+  },
+  gpsSpinner: {
+    marginLeft: 'auto',
   },
   infoRow: {
     flexDirection: 'row',
@@ -377,6 +448,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.border,
     marginHorizontal: 14,
   },
+
   // ── Public sharing toggle card ──
   shareCard: {
     flexDirection: 'row',
@@ -388,7 +460,9 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     padding: 16,
   },
-  shareTextWrap: { flex: 1 },
+  shareTextWrap: {
+    flex: 1,
+  },
   shareTitle: {
     fontSize: 14,
     fontWeight: '700',
@@ -400,6 +474,7 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     lineHeight: 20,
   },
+
   // ── Bortle notice card ──
   noticeCard: {
     flexDirection: 'row',
@@ -411,8 +486,12 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     padding: 16,
   },
-  noticeIcon: { fontSize: 24 },
-  noticeTextWrap: { flex: 1 },
+  noticeIcon: {
+    fontSize: 24,
+  },
+  noticeTextWrap: {
+    flex: 1,
+  },
   noticeTitle: {
     fontSize: 13,
     fontWeight: '700',
@@ -424,15 +503,20 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     lineHeight: 20,
   },
+
   // ── Action buttons ──
-  actions: { gap: 10 },
+  actions: {
+    gap: 10,
+  },
   btnPrimary: {
     backgroundColor: colors.accentViolet,
     borderRadius: radius.md,
     padding: 16,
     alignItems: 'center',
   },
-  btnDisabled: { opacity: 0.6 },
+  btnDisabled: {
+    opacity: 0.6,
+  },
   uploadingRow: {
     flexDirection: 'row',
     alignItems: 'center',

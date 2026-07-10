@@ -20,6 +20,8 @@ export default function LoginScreen() {
   // Remove the removeItem line once onboarding is confirmed working.
   const handleContinue = async () => {
   try {
+     // TEMPORARY: clear any old or invalid JWT
+    //await AsyncStorage.removeItem('jwtToken')
     const result = await loginUser(email, password)
 
     if (result.access_token) {

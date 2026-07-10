@@ -14,7 +14,9 @@
       "bundleIdentifier": "com.nightskyai.app",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "NightSky AI uses your location to record where night sky photos are taken and to contribute to the light pollution heat map.",
-        "NSLocationAlwaysUsageDescription": "NightSky AI uses your location to record where night sky photos are taken and to contribute to the light pollution heat map."
+        "NSLocationAlwaysUsageDescription": "NightSky AI uses your location to record where night sky photos are taken and to contribute to the light pollution heat map.",
+        "NSCameraUsageDescription": "NightSky AI needs camera access to capture night sky photos for light pollution analysis.",
+        "NSPhotoLibraryUsageDescription": "NightSky AI needs photo library access so you can upload existing night sky photos."
       }
     },
     "android": {
@@ -24,7 +26,10 @@
       "package": "com.nightskyai.app",
       "permissions": [
         "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
+        "ACCESS_COARSE_LOCATION",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
       ]
     },
     "web": {

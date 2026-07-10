@@ -4,6 +4,7 @@ from app.users import router as user_router
 from app.photos import router as photo_router
 from app.database import Base, engine
 from app import models
+from app.models import Base
 
 app = FastAPI()
 
