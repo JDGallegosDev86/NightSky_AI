@@ -5,6 +5,7 @@ from app.photos import router as photo_router
 from app.database import Base, engine
 from app import models
 from app.models import Base
+from fastapi.staticfiles import StaticFiles
 
 app = FastAPI()
 
@@ -23,7 +24,7 @@ app.add_middleware(
 
 app.include_router(user_router)
 app.include_router(photo_router)
-
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 @app.get("/")
 def home():
