@@ -1,3 +1,12 @@
+.expo/
+
+.env
+backend-api/.env
+.expo/
+__pycache__/
+*.pyc
+uploads/
+
 # Logs
 logs
 *.log

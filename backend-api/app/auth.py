@@ -1,16 +1,20 @@
+import os
 from datetime import datetime, timedelta, timezone
 
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError, ExpiredSignatureError
 from passlib.context import CryptContext
+from dotenv import load_dotenv
 
+load_dotenv()
 
 # Secret key used to sign and verify JWT tokens
-SECRET_KEY = "nightsky_super_secret_key"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60
-
+SECRET_KEY = os.environ["SECRET_KEY"]
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(
+    os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60")
+)
 # Password hashing setup
 pwd_context = CryptContext(
     schemes=["bcrypt"],

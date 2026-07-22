@@ -3,7 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.users import router as user_router
 from app.photos import router as photo_router
 from app.database import Base, engine
-from app import models
 from app.models import Base
 
 app = FastAPI()
@@ -12,11 +11,8 @@ Base.metadata.create_all(bind=engine)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:8081",
-        "http://127.0.0.1:8081",
-    ],
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -28,3 +24,7 @@ app.include_router(photo_router)
 @app.get("/")
 def home():
     return {"message": "NightSky AI backend running"}
+
+@app.get("/health")
+def health():
+    return {"status": "healthy"}

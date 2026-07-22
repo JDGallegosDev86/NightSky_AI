@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Platform } from 'react-native'
 
-const API_BASE_URL = 'http://127.0.0.1:8000'
+const API_BASE_URL = "https://nightsky-ai-api.onrender.com";
 
 export async function uploadPhoto(
   photoUri,
