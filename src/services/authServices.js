@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
-const API_BASE_URL = "http://192.168.1.229:8000"
+const API_BASE_URL = "https://nightsky-ai-api.onrender.com";
 
 export async function registerUser(email, password) {
   const response = await fetch(`${API_BASE_URL}/register`, {
