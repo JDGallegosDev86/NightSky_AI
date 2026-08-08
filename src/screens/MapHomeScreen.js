@@ -1,9 +1,12 @@
-import React, { useState } from 'react'
+import React, { useState, useCallback } from 'react'
 import {
   View, Text, TextInput, StyleSheet,
   TouchableOpacity, ScrollView, Animated,
 } from 'react-native'
+import { useFocusEffect } from '@react-navigation/native'
 import BottomNav from '../components/BottomNav'
+import SkyMap from '../components/SkyMap'
+import { getPublicUploads } from '../services/uploadService'
 import { BORTLE_LEVELS } from '../data/bortleData'
 import { colors, radius } from '../theme'
 
@@ -13,6 +16,30 @@ export default function MapHomeScreen() {
 
   // Controls whether the Bortle legend is expanded or collapsed
   const [legendVisible, setLegendVisible] = useState(false)
+
+  // Holds the publicly-shared upload pins shown on the map
+  const [pins, setPins] = useState([])
+
+  // Refetches public uploads every time this screen comes into
+  // focus, so newly shared photos show up without a manual reload.
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true
+
+      async function loadPins() {
+        try {
+          const data = await getPublicUploads()
+          if (isActive) setPins(data)
+        } catch (error) {
+          console.log('Failed to load public uploads:', error)
+        }
+      }
+
+      loadPins()
+
+      return () => { isActive = false }
+    }, [])
+  )
 
   return (
     <View style={styles.container}>
@@ -40,33 +67,9 @@ export default function MapHomeScreen() {
       </View>
 
       {/* ── Map viewport ── */}
-      {/*
-        TODO: Replace this entire View with your map component.
-        Example using react-native-maps:
-
-        import MapView, { Heatmap } from 'react-native-maps'
-
-        <MapView
-          style={{ flex: 1 }}
-          initialRegion={{
-            latitude: 39.5,
-            longitude: -98.35,
-            latitudeDelta: 20,
-            longitudeDelta: 20,
-          }}
-        >
-          <Heatmap points={heatmapData} />
-        </MapView>
-      */}
       <View style={styles.mapViewport}>
-        <View style={styles.placeholder}>
-          <Text style={styles.placeholderIcon}>🗺️</Text>
-          <Text style={styles.placeholderTitle}>Map goes here</Text>
-          <Text style={styles.placeholderSub}>
-            Install react-native-maps and replace this{'\n'}
-            placeholder with your MapView component.
-          </Text>
-        </View>
+
+        <SkyMap pins={pins} />
 
         {/* ── Floating Bortle Legend ── */}
         {/* Sits in the bottom right corner of the map */}
@@ -221,26 +224,7 @@ const styles = StyleSheet.create({
   mapViewport: {
     flex: 1,
     backgroundColor: colors.spaceDark,
-    alignItems: 'center',
-    justifyContent: 'center',
     position: 'relative',   // Needed so the legend can be positioned absolutely
-  },
-  placeholder: {
-    alignItems: 'center',
-    gap: 12,
-    padding: 32,
-  },
-  placeholderIcon: { fontSize: 48 },
-  placeholderTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.textPrimary,
-  },
-  placeholderSub: {
-    fontSize: 13,
-    color: colors.textMuted,
-    textAlign: 'center',
-    lineHeight: 20,
   },
   // ── Floating legend container ──
   // Positioned in the bottom right corner of the map
@@ -250,6 +234,7 @@ const styles = StyleSheet.create({
     right: 16,
     alignItems: 'flex-end',
     gap: 8,
+    zIndex: 1000,
   },
   // ── Expanded legend card ──
   legendCard: {

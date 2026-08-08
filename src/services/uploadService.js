@@ -61,3 +61,37 @@ export async function uploadPhoto(
 
   return data
 }
+// Fetches the logged-in user's uploaded photos from the backend.
+export async function getMyUploads() {
+  const token = await AsyncStorage.getItem('jwtToken')
+
+  const response = await fetch(`${API_BASE_URL}/my-uploads`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch uploads: ${response.status}`)
+  }
+
+  return response.json()
+}
+
+// Builds the full image URL from the relative path the backend returns.
+export function getImageUrl(relativePath) {
+  return `${API_BASE_URL}${relativePath}`
+}
+
+// Fetches all publicly-shared uploads for the heat map.
+// No auth required — this is intentionally public data with no user identity attached.
+export async function getPublicUploads() {
+  const response = await fetch(`${API_BASE_URL}/public-uploads`)
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch public uploads: ${response.status}`)
+  }
+
+  return response.json()
+}

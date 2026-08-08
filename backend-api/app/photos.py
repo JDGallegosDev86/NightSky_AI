@@ -65,6 +65,7 @@ async def upload_photo(
             longitude=float(longitude) if longitude else None,
             timestamp=timestamp,
             bortle_prediction=bortle_prediction,
+            shared_publicly=(sharePublicly == "true"),
         )
 
         db.add(upload_record)
@@ -108,3 +109,47 @@ async def upload_photo(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+@router.get("/my-uploads")
+def get_my_uploads(
+    current_user: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    uploads = (
+        db.query(Upload)
+        .filter(Upload.user_email == current_user)
+        .order_by(Upload.id.desc())
+        .all()
+    )
+
+    return [
+        {
+            "id": upload.id,
+            "filename": upload.filename,
+            "image_url": f"/uploads/{upload.filename}",
+            "latitude": upload.latitude,
+            "longitude": upload.longitude,
+            "timestamp": upload.timestamp,
+            "bortle_prediction": upload.bortle_prediction,
+        }
+        for upload in uploads
+    ]
+@router.get("/public-uploads")
+def get_public_uploads(db: Session = Depends(get_db)):
+    uploads = (
+        db.query(Upload)
+        .filter(Upload.shared_publicly == True)
+        .filter(Upload.latitude.isnot(None))
+        .filter(Upload.longitude.isnot(None))
+        .all()
+    )
+
+    return [
+        {
+            "id": upload.id,
+            "latitude": upload.latitude,
+            "longitude": upload.longitude,
+            "bortle_prediction": upload.bortle_prediction,
+            "timestamp": upload.timestamp,
+        }
+        for upload in uploads
+    ]
