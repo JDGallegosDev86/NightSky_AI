@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float
+from sqlalchemy import Column, Integer, String, Float, Boolean
 from app.database import Base
 
 class User(Base):
@@ -20,3 +20,4 @@ class Upload(Base):
     longitude = Column(Float)
     timestamp = Column(String)
     bortle_prediction = Column(String, nullable=True)
+    shared_publicly = Column(Boolean, default=False)

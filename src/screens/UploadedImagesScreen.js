@@ -1,12 +1,13 @@
-import React, { useState } from 'react'
+import React, { useState, useCallback } from 'react'
 import {
   View, Text, TouchableOpacity, ScrollView,
-  StyleSheet, FlatList, Dimensions,
+  StyleSheet, FlatList, Dimensions, Image, ActivityIndicator,
 } from 'react-native'
-import { useNavigation } from '@react-navigation/native'
+import { useNavigation, useFocusEffect } from '@react-navigation/native'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 import { colors, radius } from '../theme'
+import { getMyUploads, getImageUrl } from '../services/uploadService'
 
 // ── Grid column count ────────────────────────────────────
 const NUM_COLUMNS = 4
@@ -17,26 +18,40 @@ const { width } = Dimensions.get('window')
 // Each grid item takes up 1/4 of the screen minus padding
 const ITEM_SIZE = (width - 28 - (NUM_COLUMNS - 1) * 4) / NUM_COLUMNS
 
-// ── Placeholder image data ───────────────────────────────
-// TODO: Replace this with real data fetched from API.
-// Each image has an id, title, GPS coords, bortle rating,
-// timestamp, and a placeholder for the image URI.
-const PLACEHOLDER_IMAGES = Array.from({ length: 16 }, (_, i) => ({
-  id:        String(i + 1),
-  title:     'Image Title',
-  latitude:  40.7128 + (Math.random() - 0.5) * 2,  // Random coords near NYC for demo
-  longitude: -74.0060 + (Math.random() - 0.5) * 2,
-  bortle:    Math.floor(Math.random() * 9) + 1,      // Random Bortle 1-9 for demo
-  timestamp: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
-  imageUri:  null, // TODO: Replace with real image URI from the backend
-}))
-
 export default function UploadedImagesScreen() {
   const navigation = useNavigation()
 
-  // Holds the list of uploaded images
-  // TODO: Replace with real API fetch using useEffect
-  const [images] = useState(PLACEHOLDER_IMAGES)
+  // Holds the list of uploaded images fetched from the backend
+  const [images, setImages] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  // Refetches uploads every time this screen comes into focus,
+  // so a newly uploaded photo shows up immediately after upload
+  // without needing to force-close and reopen the app.
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true
+
+      async function loadUploads() {
+        try {
+          setLoading(true)
+          const data = await getMyUploads()
+
+          if (isActive) {
+            setImages(data)
+          }
+        } catch (error) {
+          console.log('Failed to load uploads:', error)
+        } finally {
+          if (isActive) setLoading(false)
+        }
+      }
+
+      loadUploads()
+
+      return () => { isActive = false }
+    }, [])
+  )
 
   // ── Render each grid item ────────────────────────────
   const renderItem = ({ item }) => (
@@ -45,20 +60,22 @@ export default function UploadedImagesScreen() {
       onPress={() => navigation.navigate('ImageDetail', { image: item })}
       activeOpacity={0.75}
     >
-      {item.imageUri ? (
-        // TODO: Show real image when URI is available
-        // <Image source={{ uri: item.imageUri }} style={styles.gridImage} />
-        null
+      {item.image_url ? (
+        // Real uploaded image, served from the backend's /uploads static route
+        <Image
+          source={{ uri: getImageUrl(item.image_url) }}
+          style={styles.gridImage}
+        />
       ) : (
-        // Placeholder shown until real images are loaded
+        // Fallback placeholder if an image URL is somehow missing
         <View style={styles.gridPlaceholder}>
           <Text style={styles.gridPlaceholderIcon}>🌄</Text>
         </View>
       )}
 
-      {/* Image title below the thumbnail */}
+      {/* Bortle result below the thumbnail */}
       <Text style={styles.gridItemTitle} numberOfLines={1}>
-        {item.title}
+        {item.bortle_prediction ? `Bortle ${item.bortle_prediction}` : 'Processing...'}
       </Text>
     </TouchableOpacity>
   )
@@ -79,7 +96,12 @@ export default function UploadedImagesScreen() {
         </View>
 
         {/* ── Image grid ── */}
-        {images.length === 0 ? (
+        {loading ? (
+          // ── Loading state ──
+          <View style={styles.emptyState}>
+            <ActivityIndicator size="large" color={colors.accentViolet} />
+          </View>
+        ) : images.length === 0 ? (
           // ── Empty state ──
           <View style={styles.emptyState}>
             <Text style={styles.emptyIcon}>📷</Text>
@@ -93,7 +115,7 @@ export default function UploadedImagesScreen() {
           <FlatList
             data={images}
             renderItem={renderItem}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item) => String(item.id)}
             numColumns={NUM_COLUMNS}            
             columnWrapperStyle={styles.gridRow}
             contentContainerStyle={styles.grid}
@@ -177,6 +199,11 @@ const styles = StyleSheet.create({
   gridItem: {
     width: ITEM_SIZE,
     gap: 4,
+  },
+  gridImage: {
+    width: ITEM_SIZE,
+    height: ITEM_SIZE,
+    borderRadius: radius.sm,
   },
   gridPlaceholder: {
     width: ITEM_SIZE,
