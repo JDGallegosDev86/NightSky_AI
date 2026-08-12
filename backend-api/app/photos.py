@@ -109,6 +109,8 @@ async def upload_photo(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/my-uploads")
 def get_my_uploads(
     current_user: str = Depends(get_current_user),
@@ -133,8 +135,14 @@ def get_my_uploads(
         }
         for upload in uploads
     ]
+
+
 @router.get("/public-uploads")
 def get_public_uploads(db: Session = Depends(get_db)):
+    # Deliberately omits user_email from both the query filtering
+    # and the response — this endpoint powers the public map, and
+    # no uploader identity should ever be attached to a pin that
+    # isn't the current user's own.
     uploads = (
         db.query(Upload)
         .filter(Upload.shared_publicly == True)
@@ -153,3 +161,34 @@ def get_public_uploads(db: Session = Depends(get_db)):
         }
         for upload in uploads
     ]
+
+
+@router.delete("/uploads/{upload_id}")
+def delete_upload(
+    upload_id: int,
+    current_user: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    upload = db.query(Upload).filter(Upload.id == upload_id).first()
+
+    if upload is None:
+        raise HTTPException(status_code=404, detail="Upload not found")
+
+    # Ownership check — prevents a user from deleting someone else's
+    # upload by simply guessing or incrementing an ID number.
+    if upload.user_email != current_user:
+        raise HTTPException(
+            status_code=403,
+            detail="You do not have permission to delete this upload",
+        )
+
+    # Remove the actual image file from disk, if it still exists
+    file_path = os.path.join(UPLOAD_DIR, upload.filename)
+    if os.path.exists(file_path):
+        os.remove(file_path)
+
+    # Remove the database row
+    db.delete(upload)
+    db.commit()
+
+    return {"message": "Upload deleted successfully"}
