@@ -139,10 +139,6 @@ def get_my_uploads(
 
 @router.get("/public-uploads")
 def get_public_uploads(db: Session = Depends(get_db)):
-    # Deliberately omits user_email from both the query filtering
-    # and the response — this endpoint powers the public map, and
-    # no uploader identity should ever be attached to a pin that
-    # isn't the current user's own.
     uploads = (
         db.query(Upload)
         .filter(Upload.shared_publicly == True)
@@ -158,10 +154,10 @@ def get_public_uploads(db: Session = Depends(get_db)):
             "longitude": upload.longitude,
             "bortle_prediction": upload.bortle_prediction,
             "timestamp": upload.timestamp,
+            "image_url": f"/uploads/{upload.filename}",
         }
         for upload in uploads
     ]
-
 
 @router.delete("/uploads/{upload_id}")
 def delete_upload(
