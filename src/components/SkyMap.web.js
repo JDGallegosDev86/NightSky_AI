@@ -1,16 +1,10 @@
 import React from 'react'
 import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
+import { BORTLE_LEVELS } from '../data/bortleData'
+import { getImageUrl } from '../services/uploadService'
 
 // ── NASA GIBS Black Marble tile layer ────────────────────
-// This is a free, keyless WMTS endpoint — no API token needed
-// to display the night-lights basemap itself. The Earthdata
-// token is only needed for the pixel-level radiance lookups
-// already used in the backend's /predict endpoint.
-//
-// NOTE: If tiles don't render, double check the layer name and
-// tilematrixset against NASA's current GIBS capabilities doc:
-// https://nasa-gibs.github.io/gibs-api-docs/
 const BLACK_MARBLE_URL =
   'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/wmts.cgi' +
   '?TIME=default' +
@@ -20,7 +14,24 @@ const BLACK_MARBLE_URL =
   '&Format=image/png' +
   '&TileMatrix={z}&TileRow={y}&TileCol={x}'
 
-// pins: array of { id, latitude, longitude, bortle_prediction, timestamp }
+// Fallback color for pins with no Bortle result yet (analysis pending/failed)
+const FALLBACK_COLOR = '#8b5cf6'
+
+// Looks up the exact color used in the Bortle legend for a given level,
+// so pins always match what the legend shows — single source of truth.
+function getBortleColor(bortleLevel) {
+  const levelNum = parseInt(bortleLevel, 10)
+  const match = BORTLE_LEVELS.find((b) => b.level === levelNum)
+  return match ? match.color : FALLBACK_COLOR
+}
+
+function getBortleName(bortleLevel) {
+  const levelNum = parseInt(bortleLevel, 10)
+  const match = BORTLE_LEVELS.find((b) => b.level === levelNum)
+  return match ? match.name : 'Unrated'
+}
+
+// pins: array of { id, latitude, longitude, bortle_prediction, timestamp, image_url }
 export default function SkyMap({ pins = [] }) {
   return (
     <MapContainer
@@ -35,24 +46,50 @@ export default function SkyMap({ pins = [] }) {
         maxZoom={8}
       />
 
-      {/* All pins render identically — no uploader identity attached */}
-      {pins.map((pin) => (
-        <CircleMarker
-          key={pin.id}
-          center={[pin.latitude, pin.longitude]}
-          radius={7}
-          pathOptions={{
-            color: '#8b5cf6',
-            fillColor: '#8b5cf6',
-            fillOpacity: 0.85,
-            weight: 2,
-          }}
-        >
-          <Popup>
-            Bortle {pin.bortle_prediction ?? '?'}
-          </Popup>
-        </CircleMarker>
-      ))}
+      {pins.map((pin) => {
+        const color = getBortleColor(pin.bortle_prediction)
+        const name = getBortleName(pin.bortle_prediction)
+
+        return (
+          <CircleMarker
+            key={pin.id}
+            center={[pin.latitude, pin.longitude]}
+            radius={8}
+            pathOptions={{
+              color: color,
+              fillColor: color,
+              fillOpacity: 0.85,
+              weight: 2,
+            }}
+          >
+            <Popup>
+              <div style={{ width: 180 }}>
+                {pin.image_url && (
+                  <img
+                    src={getImageUrl(pin.image_url)}
+                    alt="Night sky upload"
+                    style={{
+                      width: '100%',
+                      height: 120,
+                      objectFit: 'cover',
+                      borderRadius: 6,
+                      marginBottom: 6,
+                    }}
+                  />
+                )}
+                <div style={{ fontWeight: 700, color: color }}>
+                  Bortle {pin.bortle_prediction ?? '?'} — {name}
+                </div>
+                {pin.timestamp && (
+                  <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
+                    {new Date(pin.timestamp).toLocaleDateString()}
+                  </div>
+                )}
+              </div>
+            </Popup>
+          </CircleMarker>
+        )
+      })}
     </MapContainer>
   )
 }

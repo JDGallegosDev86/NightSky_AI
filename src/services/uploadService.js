@@ -95,3 +95,22 @@ export async function getPublicUploads() {
 
   return response.json()
 }
+
+// Deletes an uploaded photo — removes it from disk and the database.
+export async function deleteUpload(uploadId) {
+  const token = await AsyncStorage.getItem('jwtToken')
+
+  const response = await fetch(`${API_BASE_URL}/uploads/${uploadId}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}))
+    throw new Error(data.detail || `Failed to delete upload: ${response.status}`)
+  }
+
+  return response.json()
+}

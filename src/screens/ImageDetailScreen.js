@@ -1,17 +1,22 @@
-import React from 'react'
+import React, { useState } from 'react'
 import {
   View, Text, Image, TouchableOpacity,
-  ScrollView, StyleSheet, Alert,
+  ScrollView, StyleSheet, Alert, Platform,
 } from 'react-native'
 import { useNavigation, useRoute } from '@react-navigation/native'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 import { BORTLE_LEVELS } from '../data/bortleData'
+import { deleteUpload } from '../services/uploadService'
 import { colors, radius } from '../theme'
 
 export default function ImageDetailScreen() {
   const navigation = useNavigation()
   const route      = useRoute()
+
+  // Tracks whether a delete request is currently in flight,
+  // so we can disable the button and avoid a double-tap double-delete.
+  const [deleting, setDeleting] = useState(false)
 
   // ── Image data passed from UploadedImagesScreen ──────
   const { image } = route.params || {}
@@ -56,23 +61,48 @@ export default function ImageDetailScreen() {
   }
 
   // ── Handle image deletion ────────────────────────────
-  // Shows a confirmation alert before deleting
+  // Shows a confirmation prompt, then calls the backend to delete
+  // both the file on disk and the database row. Navigates back
+  // to the gallery on success, which auto-refreshes via its
+  // existing useFocusEffect fetch.
+  //
+  // React Native's Alert.alert() has no real implementation on
+  // web (react-native-web), so it silently does nothing there.
+  // We branch by platform: window.confirm on web, Alert.alert
+  // on native (iOS/Android).
   const handleDelete = () => {
-    Alert.alert(
-      'Delete Image',
-      'Are you sure you want to delete this uploaded image? This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            // TODO: Call backend API to delete the image
-            navigation.goBack()
-          },
-        },
-      ]
-    )
+    const confirmMessage =
+      'Are you sure you want to delete this uploaded image? This cannot be undone.'
+
+    const runDelete = async () => {
+      setDeleting(true)
+      try {
+        await deleteUpload(image.id)
+        navigation.goBack()
+      } catch (error) {
+        console.log('Delete failed:', error)
+        Alert.alert(
+          'Delete Failed',
+          error.message || 'Could not delete this image. Please try again.'
+        )
+        setDeleting(false)
+      }
+    }
+
+    if (Platform.OS === 'web') {
+      if (window.confirm(confirmMessage)) {
+        runDelete()
+      }
+    } else {
+      Alert.alert(
+        'Delete Image',
+        confirmMessage,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Delete', style: 'destructive', onPress: runDelete },
+        ]
+      )
+    }
   }
 
   return (
@@ -202,11 +232,14 @@ export default function ImageDetailScreen() {
 
         {/* ── Delete button ── */}
         <TouchableOpacity
-          style={styles.btnDanger}
+          style={[styles.btnDanger, deleting && styles.btnDangerDisabled]}
           onPress={handleDelete}
           activeOpacity={0.8}
+          disabled={deleting}
         >
-          <Text style={styles.btnDangerText}>Delete Image</Text>
+          <Text style={styles.btnDangerText}>
+            {deleting ? 'Deleting...' : 'Delete Image'}
+          </Text>
         </TouchableOpacity>
 
       </ScrollView>
@@ -355,6 +388,9 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     padding: 15,
     alignItems: 'center',
+  },
+  btnDangerDisabled: {
+    opacity: 0.5,
   },
   btnDangerText: {
     color: colors.danger,
